@@ -132,11 +132,12 @@ Currently the default config is:
 		    \ 'keymap_inst_rerun':      "<leader>llr",
 		    \ 'keymap_inst_continue':   "<leader>llc",
 		    \ 'keymap_inst_accept':     "<Tab>",
-	    \ 'keymap_inst_cancel':     "<Esc>",
-	    \ 'keymap_debug_toggle':    "<leader>lld",
-	    \ 'enable_at_startup':      v:true,
-	    \ 'fim_template':           '',
-	    \ }
+    	\ 'keymap_inst_cancel':     "<Esc>",
+    	\ 'keymap_debug_toggle':    "<leader>lld",
+    	\ 'enable_at_startup':      v:true,
+    	\ 'fim_template':           '',
+    	\ 'completion_mode':        'fim',
+    	\ }
 <
 
 - {endpoint_fim}		llama.cpp server endpoint for FIM completion
@@ -191,6 +192,14 @@ Currently the default config is:
 						endpoint_fim to the completion endpoint (e.g., http://localhost:8080/completion).
 						Example for Falcon-H1-Tiny:
 						'<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>'
+
+- {completion_mode}		completion mode for different types of models:
+						- 'fim' (default): Use /infill endpoint with FIM models
+						  (Qwen-Coder, CodeLlama, etc.)
+						- 'custom_fim': Use /completion endpoint with custom FIM
+						  template (Falcon-H1-Tiny, etc.)
+						- 'completion': Use /completion endpoint for non-FIM
+						  models (Gemma, Llama, etc.) for general text completion
 
 parameters for the ring-buffer with extra context:
 
@@ -274,9 +283,27 @@ Example:
 					endpoint_fim = 'http://localhost:8080/completion',
 					model_fim = './Falcon-H1-Tiny-Coder-Q8_0.gguf',
 					fim_template = '<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>',
+					completion_mode = 'custom_fim',
 					n_prefix = 256,
 					n_suffix = 64,
 					n_predict = 128,
+				}
+			end,
+		}
+<
+6. Use non-FIM models for general text completion (lazy.nvim, lua):
+>lua
+		{
+			'ggml-org/llama.vim',
+			init = function()
+				vim.g.llama_config = {
+					-- Use completion endpoint for non-FIM models like Gemma
+					endpoint_fim = 'http://localhost:8080/completion',
+					model_fim = 'gemma-2b.gguf',
+					completion_mode = 'completion',
+					n_prefix = 512,
+					n_suffix = 0,
+					n_predict = 256,
 				}
 			end,
 		}

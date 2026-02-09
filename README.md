@@ -117,9 +117,29 @@ Examples:
                 endpoint_fim = 'http://localhost:8080/completion',
                 model_fim = './Falcon-H1-Tiny-Coder-Q8_0.gguf',
                 fim_template = '<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>',
+                completion_mode = 'custom_fim',
                 n_prefix = 256,
                 n_suffix = 64,
                 n_predict = 128,
+            }
+        end,
+    }
+    ```
+
+7. Use non-FIM models for general text completion:
+
+    ```lua
+    {
+        'ggml-org/llama.vim',
+        init = function()
+            vim.g.llama_config = {
+                -- Use completion endpoint for non-FIM models
+                endpoint_fim = 'http://localhost:8080/completion',
+                model_fim = 'gemma-2b.gguf',
+                completion_mode = 'completion',
+                n_prefix = 512,
+                n_suffix = 0,
+                n_predict = 256,
             }
         end,
     }
@@ -180,11 +200,11 @@ Use `:help llama` for more details.
 
 ### Recommended LLMs
 
-The plugin requires FIM-compatible models: [HF collection](https://huggingface.co/collections/ggml-org/llamavim-6720fece33898ac10544ecf9)
+The plugin works best with FIM-compatible models: [HF collection](https://huggingface.co/collections/ggml-org/llamavim-6720fece33898ac10544ecf9)
 
 #### Models with custom FIM templates
 
-Some models like [Falcon-H1-Tiny](https://huggingface.co/spaces/tiiuae/tiny-h1-blogpost) use a custom FIM format and don't support the `/infill` endpoint. For these models, use the `fim_template` option with the completion endpoint:
+Some models like [Falcon-H1-Tiny](https://huggingface.co/spaces/tiiuae/tiny-h1-blogpost) use a custom FIM format and don't support the `/infill` endpoint. For these models, use `completion_mode = 'custom_fim'` with a custom template:
 
 ```lua
 {
@@ -194,6 +214,7 @@ Some models like [Falcon-H1-Tiny](https://huggingface.co/spaces/tiiuae/tiny-h1-b
             endpoint_fim = 'http://localhost:8080/completion',
             model_fim = './Falcon-H1-Tiny-Coder-Q8_0.gguf',
             fim_template = '<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>',
+            completion_mode = 'custom_fim',
             n_prefix = 256,
             n_suffix = 64,
             n_predict = 128,
@@ -201,6 +222,28 @@ Some models like [Falcon-H1-Tiny](https://huggingface.co/spaces/tiiuae/tiny-h1-b
     end,
 }
 ```
+
+#### Non-FIM models for text completion
+
+You can also use non-FIM models (like Gemma, Llama, etc.) for general text completion and writing assistance. These models generate text left-to-right from the cursor position:
+
+```lua
+{
+    'ggml-org/llama.vim',
+    init = function()
+        vim.g.llama_config = {
+            endpoint_fim = 'http://localhost:8080/completion',
+            model_fim = 'gemma-2b.gguf',
+            completion_mode = 'completion',
+            n_prefix = 512,
+            n_suffix = 0,  -- not used in completion mode
+            n_predict = 256,
+        }
+    end,
+}
+```
+
+Note: Non-FIM models won't understand fill-in-the-middle tasks as well as FIM-trained models, but they work great for continuing text from the cursor position.
 
 ## Examples
 

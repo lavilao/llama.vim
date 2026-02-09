@@ -132,10 +132,11 @@ Currently the default config is:
 		    \ 'keymap_inst_rerun':      "<leader>llr",
 		    \ 'keymap_inst_continue':   "<leader>llc",
 		    \ 'keymap_inst_accept':     "<Tab>",
-		    \ 'keymap_inst_cancel':     "<Esc>",
-		    \ 'keymap_debug_toggle':    "<leader>lld",
-		    \ 'enable_at_startup':      v:true,
-		    \ }
+	    \ 'keymap_inst_cancel':     "<Esc>",
+	    \ 'keymap_debug_toggle':    "<leader>lld",
+	    \ 'enable_at_startup':      v:true,
+	    \ 'fim_template':           '',
+	    \ }
 <
 
 - {endpoint_fim}		llama.cpp server endpoint for FIM completion
@@ -177,8 +178,19 @@ Currently the default config is:
 
 - {max_cache_keys}		max number of cached completions to keep in result_cache
 
-- {enable_at_startup}	whether to enable llama.vim functionality at startup
+- {enable_at_startup}		whether to enable llama.vim functionality at startup
 						(v:true to enable, v:false to disable; default: v:true)
+
+- {fim_template}		custom FIM template for models that use non-standard
+						FIM format (e.g., Falcon-H1-Tiny). Use placeholders
+						{{{prefix}}} and {{{suffix}}} (or {prefix} and {suffix})
+						which will be replaced with the actual code context.
+						The middle part will be appended after the template.
+						Note: When using this option, the plugin uses the standard
+						completion endpoint instead of /infill. Make sure to set
+						endpoint_fim to the completion endpoint (e.g., http://localhost:8080/completion).
+						Example for Falcon-H1-Tiny:
+						'<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>'
 
 parameters for the ring-buffer with extra context:
 
@@ -248,6 +260,23 @@ Example:
 					keymap_fim_accept_full = "<C-S>",
 					stop_strings = { "\n" },
 					enable_at_startup = false,
+				}
+			end,
+		}
+<
+5. Use custom FIM template for Falcon-H1-Tiny model (lazy.nvim, lua):
+>lua
+		{
+			'ggml-org/llama.vim',
+			init = function()
+				vim.g.llama_config = {
+					-- Use completion endpoint, not /infill
+					endpoint_fim = 'http://localhost:8080/completion',
+					model_fim = './Falcon-H1-Tiny-Coder-Q8_0.gguf',
+					fim_template = '<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>',
+					n_prefix = 256,
+					n_suffix = 64,
+					n_predict = 128,
 				}
 			end,
 		}

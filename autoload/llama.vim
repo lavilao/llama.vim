@@ -31,6 +31,7 @@ highlight default llama_hl_fim_info guifg=#77ff2f ctermfg=119
 "   max_line_suffix:  do not auto-trigger FIM completion if there are more than this number of characters to the right of the cursor
 "   max_cache_keys:   max number of cached completions to keep in result_cache
 "   enable_at_startup: enable llama.vim functionality at startup (default: v:true)
+"   fim_template:     custom FIM template string with {prefix}, {middle}, and {suffix} placeholders (e.g., '<|prefix|>{prefix}<|suffix|>{suffix}<|middle|>')
 "
 " ring buffer of chunks, accumulated with time upon:
 "
@@ -93,6 +94,7 @@ let s:default_config = {
     \ 'keymap_inst_cancel':     "<Esc>",
     \ 'keymap_debug_toggle':    "<leader>lld",
     \ 'enable_at_startup':      v:true,
+    \ 'fim_template':           '',
     \ }
 
 let llama_config = get(g:, 'llama_config', s:default_config)
@@ -734,6 +736,21 @@ function! llama#fim(pos_x, pos_y, is_auto, prev, use_cache) abort
     let l:suffix = l:ctx_local['suffix']
     let l:indent = l:ctx_local['indent']
 
+    " apply custom FIM template if configured
+    " note: models like Falcon-H1-Tiny don't support /infill endpoint,
+    " so we use the standard completion endpoint with a custom template
+    let l:use_custom_template = exists("g:llama_config.fim_template") && len(g:llama_config.fim_template) > 0
+    if l:use_custom_template
+        " replace placeholders in the template
+        let l:templated = g:llama_config.fim_template
+        let l:templated = substitute(l:templated, '{{{prefix}}}', l:prefix, 'g')
+        let l:templated = substitute(l:templated, '{{{suffix}}}', l:suffix, 'g')
+        let l:templated = substitute(l:templated, '{prefix}', l:prefix, 'g')
+        let l:templated = substitute(l:templated, '{suffix}', l:suffix, 'g')
+        " combine template with middle text
+        let l:prompt_combined = l:templated . l:middle
+    endif
+
     if a:is_auto && len(l:ctx_local['line_cur_suffix']) > g:llama_config.max_line_suffix
         return
     endif
@@ -793,36 +810,68 @@ function! llama#fim(pos_x, pos_y, is_auto, prev, use_cache) abort
 
     let l:extra = s:ring_get_extra()
 
-    let l:request = {
-        \ 'id_slot':          0,
-        \ 'input_prefix':     l:prefix,
-        \ 'input_suffix':     l:suffix,
-        \ 'input_extra':      l:extra,
-        \ 'prompt':           l:middle,
-        \ 'n_predict':        g:llama_config.n_predict,
-        \ 'stop':             g:llama_config.stop_strings,
-        \ 'n_indent':         l:indent,
-        \ 'top_k':            40,
-        \ 'top_p':            0.90,
-        \ 'samplers':         ["top_k", "top_p", "infill"],
-        \ 'stream':           v:false,
-        \ 'cache_prompt':     v:true,
-        \ 't_max_prompt_ms':  g:llama_config.t_max_prompt_ms,
-        \ 't_max_predict_ms': l:t_max_predict_ms,
-        \ 'response_fields':  [
-        \                       "content",
-        \                       "timings/prompt_n",
-        \                       "timings/prompt_ms",
-        \                       "timings/prompt_per_token_ms",
-        \                       "timings/prompt_per_second",
-        \                       "timings/predicted_n",
-        \                       "timings/predicted_ms",
-        \                       "timings/predicted_per_token_ms",
-        \                       "timings/predicted_per_second",
-        \                       "truncated",
-        \                       "tokens_cached",
-        \                     ],
-        \ }
+    " build request with or without custom FIM template
+    if l:use_custom_template
+        " when using custom template, use completion endpoint format (not infill)
+        " note: Falcon-H1 and similar models don't support /infill endpoint
+        let l:request = {
+            \ 'prompt':           l:prompt_combined,
+            \ 'n_predict':        g:llama_config.n_predict,
+            \ 'stop':             g:llama_config.stop_strings,
+            \ 'temperature':      0.8,
+            \ 'top_k':            40,
+            \ 'top_p':            0.90,
+            \ 'stream':           v:false,
+            \ 'cache_prompt':     v:true,
+            \ 't_max_prompt_ms':  g:llama_config.t_max_prompt_ms,
+            \ 't_max_predict_ms': l:t_max_predict_ms,
+            \ 'response_fields':  [
+            \                       "content",
+            \                       "timings/prompt_n",
+            \                       "timings/prompt_ms",
+            \                       "timings/prompt_per_token_ms",
+            \                       "timings/prompt_per_second",
+            \                       "timings/predicted_n",
+            \                       "timings/predicted_ms",
+            \                       "timings/predicted_per_token_ms",
+            \                       "timings/predicted_per_second",
+            \                       "truncated",
+            \                       "tokens_cached",
+            \                     ],
+            \ }
+    else
+        " default: use standard infill format
+        let l:request = {
+            \ 'id_slot':          0,
+            \ 'input_prefix':     l:prefix,
+            \ 'input_suffix':     l:suffix,
+            \ 'input_extra':      l:extra,
+            \ 'prompt':           l:middle,
+            \ 'n_predict':        g:llama_config.n_predict,
+            \ 'stop':             g:llama_config.stop_strings,
+            \ 'n_indent':         l:indent,
+            \ 'top_k':            40,
+            \ 'top_p':            0.90,
+            \ 'samplers':         ["top_k", "top_p", "infill"],
+            \ 'stream':           v:false,
+            \ 'cache_prompt':     v:true,
+            \ 't_max_prompt_ms':  g:llama_config.t_max_prompt_ms,
+            \ 't_max_predict_ms': l:t_max_predict_ms,
+            \ 'response_fields':  [
+            \                       "content",
+            \                       "timings/prompt_n",
+            \                       "timings/prompt_ms",
+            \                       "timings/prompt_per_token_ms",
+            \                       "timings/prompt_per_second",
+            \                       "timings/predicted_n",
+            \                       "timings/predicted_ms",
+            \                       "timings/predicted_per_token_ms",
+            \                       "timings/predicted_per_second",
+            \                       "truncated",
+            \                       "tokens_cached",
+            \                     ],
+            \ }
+    endif
 
     let l:curl_command = [
         \ "curl",

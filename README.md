@@ -106,6 +106,25 @@ Examples:
     let g:llama_config.keymap_inst_cancel   = "<Esc>"
     ```
 
+6. Use custom FIM template for models like Falcon-H1-Tiny:
+
+    ```lua
+    {
+        'ggml-org/llama.vim',
+        init = function()
+            vim.g.llama_config = {
+                -- Use completion endpoint, not /infill
+                endpoint_fim = 'http://localhost:8080/completion',
+                model_fim = './Falcon-H1-Tiny-Coder-Q8_0.gguf',
+                fim_template = '<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>',
+                n_prefix = 256,
+                n_suffix = 64,
+                n_predict = 128,
+            }
+        end,
+    }
+    ```
+
 Please refer to `:help llama_config` or the [source](./autoload/llama.vim)
 for the full list of options.
 
@@ -162,6 +181,26 @@ Use `:help llama` for more details.
 ### Recommended LLMs
 
 The plugin requires FIM-compatible models: [HF collection](https://huggingface.co/collections/ggml-org/llamavim-6720fece33898ac10544ecf9)
+
+#### Models with custom FIM templates
+
+Some models like [Falcon-H1-Tiny](https://huggingface.co/spaces/tiiuae/tiny-h1-blogpost) use a custom FIM format and don't support the `/infill` endpoint. For these models, use the `fim_template` option with the completion endpoint:
+
+```lua
+{
+    'ggml-org/llama.vim',
+    init = function()
+        vim.g.llama_config = {
+            endpoint_fim = 'http://localhost:8080/completion',
+            model_fim = './Falcon-H1-Tiny-Coder-Q8_0.gguf',
+            fim_template = '<|prefix|>{{{prefix}}}<|suffix|>{{{suffix}}}<|middle|>',
+            n_prefix = 256,
+            n_suffix = 64,
+            n_predict = 128,
+        }
+    end,
+}
+```
 
 ## Examples
 

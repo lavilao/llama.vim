@@ -743,11 +743,14 @@ function! llama#fim(pos_x, pos_y, is_auto, prev, use_cache) abort
     if l:use_custom_template
         " replace placeholders in the template
         let l:templated = g:llama_config.fim_template
-        let l:templated = substitute(l:templated, '{{{prefix}}}', l:prefix, 'g')
-        let l:templated = substitute(l:templated, '{{{suffix}}}', l:suffix, 'g')
-        let l:templated = substitute(l:templated, '{prefix}', l:prefix, 'g')
-        let l:templated = substitute(l:templated, '{suffix}', l:suffix, 'g')
-        " combine template with middle text
+        " escape backslashes in prefix/suffix for use as replacement string
+        let l:escaped_prefix = substitute(l:prefix, '\\', '\\\\\\\\', 'g')
+        let l:escaped_suffix = substitute(l:suffix, '\\', '\\\\\\\\', 'g')
+        let l:templated = substitute(l:templated, '{{{prefix}}}', l:escaped_prefix, 'g')
+        let l:templated = substitute(l:templated, '{{{suffix}}}', l:escaped_suffix, 'g')
+        let l:templated = substitute(l:templated, '{prefix}', l:escaped_prefix, 'g')
+        let l:templated = substitute(l:templated, '{suffix}', l:escaped_suffix, 'g')
+        " combine template with middle text (what user has already typed on current line)
         let l:prompt_combined = l:templated . l:middle
     endif
 
